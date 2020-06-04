@@ -8,6 +8,6 @@ cache={}
 
 def  solve_game(depth,balls):
     if balls in cache:
-        return cache[bls]
+        return cache[balls]
     if depth==k:
         return w-balls.count("W")

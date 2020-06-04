@@ -1,68 +1,142 @@
-def add(a_b, c_d):
-    (a,b) = a_b
-    (c,d) = c_d
-    return a+c, b+d
+#!/bin/python3
 
-def sub(a_b, c_d):
-    (a,b) = a_b
-    (c,d) = c_d
-    return a-c, b-d
-
-def rot(i_j):
-    (i,j) =i_j
-    return j,-i
-
-def rotk(k,x):
-    for i in range(k):
-        x = rot(x)
-    return x
-
-def trans(k_d,x):
-    (k,d) = k_d
-    return add(rotk(k,x),d)
-
-def compose(k_d, K_D):
-    (k,d) = k_d
-    (K,D) = K_D
-    return k + K & 3, trans((k,d),D)
-
-def inv(k_d):
-    (k,d) = k_d
-    k = -k & 3
-    return k, rotk(k^2,d)
-
-def contains(co_c1,p):
-    (c0,c1) = co_c1
-    return c0[0] <= p[0] <= c1[0] and c0[1] <= p[1] <= c1[1]
+import os
+import sys
 
 
-n = int(input())
-s = int(input())
-transes = [None]*(s+1)
-corners = [None]*(s+1)
-transes[0] = 0, (0,0)
-corners[0] = (0,0), (n-1,n-1)
+def identity_matrix():
+    return [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+    ]
 
-for i in range(s):
-    a,b,d = list(map(int, input().strip().split()))
-    a -= 1
-    b -= 1
-    itr = inv(transes[i]); i += 1
-    ncorns = [trans(itr,x) for x in [(a,b),(a,b+d),(a+d,b+d),(a+d,b)]]
-    transes[i] = i & 3, sub((a,b), rotk(i & 3, ncorns[3]))
-    corners[i] = min(ncorns), max(ncorns)
+def clock_wise_rot(x, y, k):
+    return [
+        [1, x - y, k + x + y],
+        [0, 0, -1],
+        [0, 1, 0],
+    ]
 
-for qq in range(eval(input())):
-    x = int(input())
-    p = x//n, x%n
-    L = 0
-    R = s+1
-    while R - L > 1:
-        M = L + R >> 1
-        if contains(corners[M],p):
-            L = M
-        else:
-            R = M
+def counter_clock_wise_rot(x, y, k):
+    return [
+        [1, k + x + y, -x + y],
+        [0, 0, 1],
+        [0, -1, 0],
+    ]
 
-    ans = trans((transes[L]),p)
-    print("%s %s" % add(ans,(1,1)))
+
+def multiply(a, b):
+    c = [
+        [0] * len(b[0])
+        for _ in range(len(a))
+    ]
+    for i in range(len(a)):
+        for j in range(len(b[0])):
+            for k in range(len(a[0])):
+                c[i][j] += a[i][k] * b[k][j]
+
+    return c
+
+def multiply_counter_clock_wise_rot(x, y, k, a):
+    return [[
+        a[0][i] + (k + x + y) * a[1][i] + (-x + y) * a[2][i]
+        for i in range(3)
+    ], [
+        a[2][i]
+        for i in range(3)
+    ], [
+        -a[1][i]
+        for i in range(3)
+    ]]
+
+def multiply_clock_wise_rot(x, y, k, a):
+    return [[
+        a[0][i] + (x - y) * a[1][i] + (k + x + y) * a[2][i]
+        for i in range(3)
+    ], [
+        -a[2][i]
+        for i in range(3)
+    ], [
+        a[1][i]
+        for i in range(3)
+    ]]
+
+def kingRichardKnights(n, commands, knights):
+    new_commands = []
+
+    t = identity_matrix()
+    for i, c in enumerate(commands):
+        m = multiply([[1, c[0], c[1]]], t)
+
+        new_command = [m[0][1], m[0][2], c[2]]
+        if (i % 4) == 1:
+            new_command[0] -= c[2]
+        elif (i % 4) == 2:
+            new_command[0] -= c[2]
+            new_command[1] -= c[2]
+        elif (i % 4) == 3:
+            new_command[1] -= c[2]
+        new_commands.append(new_command)
+
+        # t = multiply(counter_clock_wise_rot(c[0], c[1], c[2]), t)
+        t = multiply_counter_clock_wise_rot(c[0], c[1], c[2], t)
+
+    to_process = {}
+    for k in knights:
+        i, j = (k // n) + 1, (k % n) + 1
+
+        l = -1
+        r = len(new_commands)
+        while r - l > 1:
+            s = (l + r) // 2
+            x, y, k = new_commands[s]
+            if (x <= i <= x + k and
+                    y <= j <= y + k):
+                l = s
+            else:
+                r = s
+
+        to_process.setdefault(l, [])
+        to_process[l].append((i, j))
+
+    ans = {
+        k: k
+        for k in to_process.get(-1, [])
+    }
+
+    t = identity_matrix()
+    for i, c in enumerate(new_commands):
+      
+        t = multiply_clock_wise_rot(c[0], c[1], c[2], t)
+        for k in to_process.get(i, []):
+            m = multiply([[1, k[0], k[1]]], t)
+            ans[k] = [m[0][1], m[0][2]]
+
+    result = []
+    for k in knights:
+        result.append(ans[(k // n) + 1, (k % n) + 1])
+
+    return result
+
+if __name__ == '__main__':
+    fptr = open(os.environ['OUTPUT_PATH'], 'w')
+
+    n = int(input())
+    s = int(input())
+
+    commands = []
+    for _ in range(s):
+        commands.append(list(map(int, input().rstrip().split())))
+
+    kn = int(input())
+    knights = []
+    for _ in range(kn):
+        knights.append(int(input().strip()))
+
+    result = kingRichardKnights(n, commands, knights)
+
+    fptr.write('\n'.join([' '.join(map(str, x)) for x in result]))
+    fptr.write('\n')
+
+    fptr.close()
