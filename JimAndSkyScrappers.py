@@ -1,14 +1,14 @@
 def solve(arr):
     single_route = 0
-    st = []
+    stack = []
     
     for i in range(len(arr)):
-        while st and st[-1][0] < arr[i]:
-            st.pop()
-        if st and arr[i] == st[-1][0]:
-            single_route += st[-1][1]
-            st[-1][1] += 1
+        while stack and stack[-1][0] < arr[i]:
+            stack.pop()
+        if stack and arr[i] == stack[-1][0]:
+            single_route += stack[-1][1]
+            stack[-1][1] += 1
         else:
-            st.append([arr[i], 1])
+            stack.append([arr[i], 1])
     
     return 2*single_route
